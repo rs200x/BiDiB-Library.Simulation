@@ -70,5 +70,5 @@ steps:
       coveragePrecision: "0"
       forceCoverageImprovement: true
       coverageUpperThreshold: "70"
-      baseDefinitionId: 21
-      baseBranchRef: "refs/heads/master"
+      baseDefinitionId: 32
+      baseBranchRef: "refs/heads/main"

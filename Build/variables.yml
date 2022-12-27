@@ -2,5 +2,6 @@ variables:
   solution: "BiDiB-Library.Simulation.sln"
   buildPlatform: "Any CPU"
   buildConfiguration: "Release"
-  version: "0.0"
-  version.build: "$(version).$(Build.BuildId)"
+  version: "1.0.0"
+  revision: $[counter(variables['version'], 0)]
+  packageVersion: '$(version)-dev.$(revision)'

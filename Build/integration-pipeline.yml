@@ -67,21 +67,23 @@ steps:
       coverageFailOption: "build"
       coverageType: "blocks"
       coveragePrecision: "0"
-      forceCoverageImprovement: true
+      forceCoverageImprovement: false
       coverageUpperThreshold: "70"
-      baseDefinitionId: 21
-      baseBranchRef: "refs/heads/master"
+      baseDefinitionId: 32
+      baseBranchRef: "refs/heads/main"
   
   - task: NuGetAuthenticate@1
 
-  - task: NuGetCommand@2
+  - task: DotNetCoreCLI@2
+    displayName: 'dotnet pack services'
     inputs:
       command: 'pack'
+      arguments: '--configuration $(buildConfiguration)'
       packagesToPack: 'BiDiB-Library.Simulation/*.csproj'
-      versioningScheme: byPrereleaseNumber
-      majorVersion: '0'
-      minorVersion: '0'
-      patchVersion: '1-Dev$(Build.BuildId)'
+      nobuild: true
+      includesymbols: true
+      versioningScheme: 'byEnvVar'
+      versionEnvVar: 'packageVersion'
 
   - task: NuGetCommand@2
     inputs:
@@ -89,3 +91,5 @@ steps:
       packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
       nuGetFeedType: 'internal'
       publishVstsFeed: '11cfb857-a459-41bf-a18f-5b64083932ef/7c0f4f40-53aa-4b6d-89b8-e0d0c65737a3'
+      versioningScheme: 'off'
+      allowPackageConflicts: true
