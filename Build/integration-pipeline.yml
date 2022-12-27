@@ -63,7 +63,7 @@ steps:
       checkWarnings: true
       warningFailOption: "build"
       showStatistics: true
-      checkCoverage: true
+      checkCoverage: false
       coverageFailOption: "build"
       coverageType: "blocks"
       coveragePrecision: "0"
