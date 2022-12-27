@@ -7,7 +7,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BiDiB-Library.Simulation", 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{BA9D049B-BDEC-403E-8DC6-5CDC33AFB6DB}"
 	ProjectSection(SolutionItems) = preProject
+		Build\integration-pipeline.yml = Build\integration-pipeline.yml
+		Build\master-pipeline.yml = Build\master-pipeline.yml
+		Build\merge-pipeline.yml = Build\merge-pipeline.yml
 		nuget.config = nuget.config
+		Build\variables.yml = Build\variables.yml
 	EndProjectSection
 EndProject
 Global
