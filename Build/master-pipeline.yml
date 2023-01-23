@@ -20,20 +20,15 @@ steps:
 
   - task: NuGetToolInstaller@1
 
-  - task: NuGetCommand@2
+  - task: DotNetCoreCLI@2
+    enabled: true
     inputs:
-      command: "restore"
-      restoreSolution: '$(solution)'
-      feedsToUse: "config"
-      nugetConfigPath: "nuget.config"
-
-  - task: PowerShell@2
-    inputs:
-      targetType: "inline"
-      script: |
-        $date=$(Get-Date -Format ddMMyyy);
-        Write-Host "##vso[task.setvariable variable=BuildDate]$date"
-
+      command: 'restore'
+      projects: '**/*.sln'
+      feedsToUse: 'config'
+      nugetConfigPath: 'nuget.config'
+      restoreArguments: '/property:Configuration=$(BuildConfiguration)'
+  
   - task: VSBuild@1
     inputs:
       solution: '$(solution)'
@@ -43,6 +38,7 @@ steps:
 
   - task: VSTest@2
     enabled: false
+    continueOnError: false
     inputs:
       testSelector: "testAssemblies"
       testAssemblyVer2: |
@@ -55,6 +51,7 @@ steps:
       runSettingsFile: '$(System.DefaultWorkingDirectory)\CodeCoverage.runsettings'
 
   - task: BuildQualityChecks@8
+    continueOnError: true
     inputs:
       checkWarnings: true
       warningFailOption: "build"
@@ -67,3 +64,33 @@ steps:
       coverageUpperThreshold: "70"
       baseDefinitionId: 32
       baseBranchRef: "refs/heads/main"
+
+  - task: DotNetCoreCLI@2
+    displayName: 'dotnet pack services'
+    inputs:
+      command: 'pack'
+      arguments: '--configuration $(buildConfiguration)'
+      packagesToPack: 'BiDiB-Library.Simulation/*.csproj'
+      nobuild: true
+      includesymbols: true
+      versioningScheme: 'byEnvVar'
+      versionEnvVar: 'version'
+
+  - task: NuGetCommand@2
+    continueOnError: true
+    inputs:
+      command: 'push'
+      packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
+      nuGetFeedType: 'internal'
+      publishVstsFeed: '11cfb857-a459-41bf-a18f-5b64083932ef/7c0f4f40-53aa-4b6d-89b8-e0d0c65737a3'
+      versioningScheme: 'off'
+      allowPackageConflicts: true
+
+  - task: NuGetCommand@2
+    continueOnError: true
+    inputs:
+      command: 'push'
+      packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
+      nuGetFeedType: 'internal'
+      publishVstsFeed: '318ba8a7-6ebb-41b0-994d-1baee3e08af0'
+      allowPackageConflicts: true

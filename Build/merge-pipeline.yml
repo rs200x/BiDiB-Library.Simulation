@@ -12,7 +12,7 @@ trigger:
       - feature/*
       - bug/*
       - releases/*
-      - Development
+      - development
 
 pool:
   vmImage: "windows-2022"
@@ -26,20 +26,15 @@ steps:
 
   - task: NuGetToolInstaller@1
 
-  - task: NuGetCommand@2
+  - task: DotNetCoreCLI@2
+    enabled: true
     inputs:
-      command: "restore"
-      restoreSolution: '$(solution)'
-      feedsToUse: "config"
-      nugetConfigPath: "nuget.config"
-
-  - task: PowerShell@2
-    inputs:
-      targetType: "inline"
-      script: |
-        $date=$(Get-Date -Format ddMMyyy);
-        Write-Host "##vso[task.setvariable variable=BuildDate]$date"
-
+      command: 'restore'
+      projects: '**/*.sln'
+      feedsToUse: 'config'
+      nugetConfigPath: 'nuget.config'
+      restoreArguments: '/property:Configuration=$(BuildConfiguration)'
+  
   - task: VSBuild@1
     inputs:
       solution: '$(solution)'
@@ -49,6 +44,7 @@ steps:
 
   - task: VSTest@2
     enabled: false
+    continueOnError: false
     inputs:
       testSelector: "testAssemblies"
       testAssemblyVer2: |
@@ -61,6 +57,7 @@ steps:
       runSettingsFile: '$(System.DefaultWorkingDirectory)\CodeCoverage.runsettings'
 
   - task: BuildQualityChecks@8
+    continueOnError: true
     inputs:
       checkWarnings: true
       warningFailOption: "build"

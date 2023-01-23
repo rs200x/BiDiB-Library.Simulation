@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <AssemblyName>org.bidib.nbidibc.simulation</AssemblyName>
@@ -19,7 +19,7 @@
 
   <ItemGroup>
     <PackageReference Include="log4net" Version="2.0.15" />
-    <PackageReference Include="org.bidib.netbidibc.core" Version="1.0.1-dev.4" />
+    <PackageReference Include="org.bidib.netbidibc.core" Version="1.0.2-dev.6" />
     <PackageReference Include="System.ComponentModel.Composition" Version="7.0.0" />
   </ItemGroup>
 
