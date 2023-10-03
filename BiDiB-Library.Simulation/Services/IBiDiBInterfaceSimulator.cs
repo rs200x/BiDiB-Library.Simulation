@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace org.bidib.nbidibc.simulation.Services
+namespace org.bidib.Net.Simulation.Services
 {
     public interface IBiDiBInterfaceSimulator : IDisposable
     {

@@ -1,9 +1,9 @@
 ﻿using System;
-using org.bidib.netbidibc.core;
-using org.bidib.netbidibc.core.Message;
-using org.bidib.netbidibc.core.Models.Messages.Input;
+using org.bidib.Net.Core;
+using org.bidib.Net.Core.Message;
+using org.bidib.Net.Core.Models.Messages.Input;
 
-namespace org.bidib.nbidibc.Simulation.Models.Nodes
+namespace org.bidib.Net.Simulation.Models.Nodes
 {
     public class S88TleNode : SimulationNode
     {

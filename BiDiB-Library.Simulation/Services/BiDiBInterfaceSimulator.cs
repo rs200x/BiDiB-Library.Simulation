@@ -3,43 +3,54 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using log4net;
-using org.bidib.netbidibc.core.Message;
-using org.bidib.netbidibc.core.Models;
-using org.bidib.netbidibc.core.Models.BiDiB.Extensions;
-using org.bidib.netbidibc.core.Models.Messages.Input;
-using org.bidib.nbidibc.Simulation.Models.Definition;
-using org.bidib.nbidibc.Simulation.Models.Nodes;
-using org.bidib.netbidibc.core.Models.Xml;
-using org.bidib.netbidibc.core.Services.Interfaces;
-using org.bidib.netbidibc.core.Utils;
-using Node = org.bidib.nbidibc.Simulation.Models.Definition.Node;
+using Microsoft.Extensions.Logging;
+using org.bidib.Net.Core.Message;
+using org.bidib.Net.Core.Models;
+using org.bidib.Net.Core.Models.BiDiB.Extensions;
+using org.bidib.Net.Core.Models.Xml;
+using org.bidib.Net.Core.Services.Interfaces;
+using org.bidib.Net.Core.Utils;
+using org.bidib.Net.Simulation.Models.Definition;
+using org.bidib.Net.Simulation.Models.Nodes;
+using Node = org.bidib.Net.Simulation.Models.Definition.Node;
 
-namespace org.bidib.nbidibc.simulation.Services
+namespace org.bidib.Net.Simulation.Services
 {
     public sealed class BiDiBInterfaceSimulator : IBiDiBInterfaceSimulator
     {
         private readonly IXmlService xmlService;
-        private static readonly ILog Logger = LogManager.GetLogger(typeof(BiDiBInterfaceSimulator));
+        private readonly ILogger<BiDiBInterfaceSimulator> logger;
         private readonly BlockingCollection<byte[]> outputMessageQueue;
         private readonly BlockingCollection<byte[]> inputMessageQueue;
         private bool isActive;
         private readonly IBiDiBMessageExtractor messageExtractor;
+        private readonly ISimulationNodeFactory simulationNodeFactory;
         private readonly bool useMessageSecurity;
         private readonly Dictionary<int, SimulationNode> nodes;
         private readonly string defaultSimulationFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".bidib", "data", "simulation", "simulation.xml");
         private readonly string simulationSchemaFilePath = AppDomain.CurrentDomain.BaseDirectory + "data\\Schema\\simulation.xsd";
 
-        public BiDiBInterfaceSimulator(IXmlService xmlService, IBiDiBMessageExtractor messageExtractor)
-            : this(xmlService, messageExtractor, true)
+        public BiDiBInterfaceSimulator(
+            IXmlService xmlService, 
+            IBiDiBMessageExtractor messageExtractor, 
+            ISimulationNodeFactory simulationNodeFactory,
+            ILogger<BiDiBInterfaceSimulator> logger)
+            : this(xmlService, messageExtractor, simulationNodeFactory, true, logger)
         {
         }
 
-        public BiDiBInterfaceSimulator(IXmlService xmlService, IBiDiBMessageExtractor messageExtractor, bool useMessageSecurity)
+        public BiDiBInterfaceSimulator(
+            IXmlService xmlService, 
+            IBiDiBMessageExtractor messageExtractor,
+            ISimulationNodeFactory simulationNodeFactory,
+            bool useMessageSecurity, 
+            ILogger<BiDiBInterfaceSimulator> logger)
         {
             this.xmlService = xmlService;
             this.messageExtractor = messageExtractor;
+            this.simulationNodeFactory = simulationNodeFactory;
             this.useMessageSecurity = useMessageSecurity;
+            this.logger = logger;
 
             inputMessageQueue = new BlockingCollection<byte[]>();
             outputMessageQueue = new BlockingCollection<byte[]>();
@@ -52,14 +63,14 @@ namespace org.bidib.nbidibc.simulation.Services
         {
             SimulationFilePath = !string.IsNullOrEmpty(simulationFilePath) ? simulationFilePath : defaultSimulationFilePath;
 
-            IXmlValidationInfo result = xmlService.ValidateFile(SimulationFilePath, Namespaces.SimulationNamespaceUrl, simulationSchemaFilePath);
+            var result = xmlService.ValidateFile(SimulationFilePath, Namespaces.SimulationNamespaceUrl, simulationSchemaFilePath);
             if (result.Result == XmlValidationResult.Valid)
             {
                 LoadSimulationDefinition();
             }
             else
             {
-                Logger.Warn($"could not read simulation file '{SimulationFilePath}' -> {result.Result}! Using basics");
+                logger.LogWarning($"could not read simulation file '{SimulationFilePath}' -> {result.Result}! Using basics");
                 SimulationFilePath = "Fallback simulation";
                 CreateSampleSimulationNodes();
             }
@@ -67,20 +78,20 @@ namespace org.bidib.nbidibc.simulation.Services
 
         private void LoadSimulationDefinition()
         {
-            SimulationDefinition simulation = xmlService.LoadFromFile<SimulationDefinition>(SimulationFilePath);
-            SimulationNode master = SimulationNodeFactory.Create(simulation.Master, EnqueueResponse);
+            var simulation = xmlService.LoadFromFile<SimulationDefinition>(SimulationFilePath);
+            var master = simulationNodeFactory.Create(simulation.Master, EnqueueResponse);
             nodes.Add(master.GetAddress(), master);
             AddSubNodes(master, simulation.Master.Nodes);
         }
 
         private void AddSubNodes(SimulationNode parent, IEnumerable<Node> subNodes)
         {
-            foreach (Node subNode in subNodes)
+            foreach (var subNode in subNodes)
             {
-                SimulationNode node = SimulationNodeFactory.Create(subNode, EnqueueResponse);
+                var node = simulationNodeFactory.Create(subNode, EnqueueResponse);
                 if (parent.GetAddress() != 0)
                 {
-                    byte[] extendedAddress = new byte[parent.Address.Length + 1];
+                    var extendedAddress = new byte[parent.Address.Length + 1];
                     Array.Copy(parent.Address, 0, extendedAddress, 0, parent.Address.Length);
                     extendedAddress[parent.Address.Length] = node.Address[0];
                     node.Address = extendedAddress;
@@ -97,7 +108,7 @@ namespace org.bidib.nbidibc.simulation.Services
 
         private void CreateSampleSimulationNodes()
         {
-            SimulationNode master = new SimulationNode { Address = new byte[] { 0 }, UniqueId = 40_532_454_695_511_040, ProtocolVersion = "0.6", SoftwareVersion = "2.04.03" };
+            var master = new SimulationNode { Address = new byte[] { 0 }, UniqueId = 40_532_454_695_511_040, ProtocolVersion = "0.6", SoftwareVersion = "2.04.03" };
             master.Initialize(EnqueueResponse);
             nodes.Add(master.GetAddress(), master);
             SimulationNode[] simNodes =
@@ -113,12 +124,12 @@ namespace org.bidib.nbidibc.simulation.Services
                 new() {Address = new byte[] {3}, UniqueId = 1_407_422_681_033_871, ProtocolVersion = "0.6", SoftwareVersion = "1.00.00"}
             };
 
-            foreach (SimulationNode simNode in simNodes)
+            foreach (var simNode in simNodes)
             {
                 simNode.Initialize(EnqueueResponse);
                 nodes.Add(simNode.GetAddress(), simNode);
                 master.Children.Add(simNode);
-                foreach (SimulationNode child in simNode.Children)
+                foreach (var child in simNode.Children)
                 {
                     nodes.Add(child.GetAddress(), child);
                 }
@@ -136,7 +147,7 @@ namespace org.bidib.nbidibc.simulation.Services
         {
             while (isActive)
             {
-                if (!inputMessageQueue.TryTake(out byte[] message, 100))
+                if (!inputMessageQueue.TryTake(out var message, 100))
                 {
                     continue;
                 }
@@ -149,7 +160,7 @@ namespace org.bidib.nbidibc.simulation.Services
         {
             while (isActive)
             {
-                if (!outputMessageQueue.TryTake(out byte[] message, 100))
+                if (!outputMessageQueue.TryTake(out var message, 100))
                 {
                     continue;
                 }
@@ -173,7 +184,7 @@ namespace org.bidib.nbidibc.simulation.Services
         {
             while (queue.Count > 0)
             {
-                queue.TryTake(out byte[] _, 10);
+                queue.TryTake(out var _, 10);
             }
         }
 
@@ -189,16 +200,16 @@ namespace org.bidib.nbidibc.simulation.Services
 
         private void ProcessOutputMessage(byte[] message)
         {
-            IEnumerable<BiDiBInputMessage> messages = messageExtractor.ExtractMessage(message, useMessageSecurity);
+            var messages = messageExtractor.ExtractMessage(message, useMessageSecurity);
 
-            foreach (BiDiBInputMessage inputMessage in messages)
+            foreach (var inputMessage in messages)
             {
                 if (!nodes.ContainsKey(inputMessage.Address.GetArrayValue()))
                 {
                     continue;
                 }
 
-                SimulationNode node = nodes[inputMessage.Address.GetArrayValue()];
+                var node = nodes[inputMessage.Address.GetArrayValue()];
                 node.HandleMessage(inputMessage, EnqueueResponse);
             }
         }

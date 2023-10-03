@@ -1,19 +1,28 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Composition;
 using System.Linq;
-using log4net;
-using org.bidib.netbidibc.core;
-using org.bidib.netbidibc.core.Models.BiDiB;
-using org.bidib.nbidibc.Simulation.Models.Nodes;
-using Node = org.bidib.nbidibc.Simulation.Models.Definition.Node;
+using Microsoft.Extensions.Logging;
+using org.bidib.Net.Core;
+using org.bidib.Net.Core.Models.BiDiB;
+using org.bidib.Net.Simulation.Models.Nodes;
+using Node = org.bidib.Net.Simulation.Models.Definition.Node;
 
-namespace org.bidib.nbidibc.simulation.Services
+namespace org.bidib.Net.Simulation.Services
 {
-    public static class SimulationNodeFactory
+    [Export(typeof(ISimulationNodeFactory))]
+    [PartCreationPolicy(CreationPolicy.Shared)]
+    public class SimulationNodeFactory : ISimulationNodeFactory
     {
-        private static readonly ILog Logger = LogManager.GetLogger(typeof(SimulationNodeFactory));
+        private readonly ILogger<SimulationNodeFactory> logger;
 
-        public static SimulationNode Create(Node node, Action<byte[]> addResponse)
+        [ImportingConstructor]
+        public SimulationNodeFactory(ILogger<SimulationNodeFactory> logger)
+        {
+            this.logger = logger;
+        }
+
+        public SimulationNode Create(Node node, Action<byte[]> addResponse)
         {
             if (node == null)
             {
@@ -24,6 +33,13 @@ namespace org.bidib.nbidibc.simulation.Services
             
             switch (node.ProductId)
             {
+                case 110:
+                case 111:
+                case 112: 
+                case 119: 
+                case 125: 
+                case 131: 
+                case 147: { simNode = new BootLoaderNode(); break; }
                 case 103: { simNode = new GbmBoostNode(); break; }
                 case 104:
                 case 132: { simNode = new GbmBoostMaster(); break; }
@@ -51,7 +67,7 @@ namespace org.bidib.nbidibc.simulation.Services
             return simNode;
         }
 
-        private static void SetFeatureValues(netbidibc.core.Models.BiDiB.Node simNode, Node node)
+        private void SetFeatureValues(Net.Core.Models.BiDiB.Node simNode, Node node)
         {
             var features = simNode.Features?.ToList() ?? new List<Feature>();
 
@@ -61,11 +77,11 @@ namespace org.bidib.nbidibc.simulation.Services
                 {
                     if (!Enum.TryParse(featureDef.Type, out BiDiBFeature featureType))
                     {
-                        Logger.Warn($"Feature {featureDef.Type} is not known!");
+                        logger.LogWarning("Feature {Type} is not known!", featureDef.Type);
                         continue;
                     }
 
-                    var feature = features.FirstOrDefault(x => x.FeatureType == featureType);
+                    var feature = features.Find(x => x.FeatureType == featureType);
                     if (feature == null)
                     {
                         feature = new Feature { FeatureId = (byte)featureType };

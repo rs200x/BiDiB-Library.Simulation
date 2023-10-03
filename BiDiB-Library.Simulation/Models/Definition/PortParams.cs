@@ -1,9 +1,9 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Xml.Serialization;
-using org.bidib.netbidibc.core.Models;
+using org.bidib.Net.Core.Models;
 
-namespace org.bidib.nbidibc.Simulation.Models.Definition
+namespace org.bidib.Net.Simulation.Models.Definition
 {
     [XmlInclude(typeof(LightPortParams))]
     [XmlInclude(typeof(BacklightPortParams))]

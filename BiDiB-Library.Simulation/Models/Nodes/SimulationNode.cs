@@ -5,17 +5,16 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
-using org.bidib.netbidibc.core;
-using org.bidib.netbidibc.core.Enumerations;
-using org.bidib.netbidibc.core.Message;
-using org.bidib.netbidibc.core.Models.BiDiB;
-using org.bidib.netbidibc.core.Models.BiDiB.Extensions;
-using org.bidib.netbidibc.core.Models.Messages.Input;
-using org.bidib.netbidibc.core.Utils;
-using Node = org.bidib.netbidibc.core.Models.BiDiB.Node;
+using org.bidib.Net.Core;
+using org.bidib.Net.Core.Enumerations;
+using org.bidib.Net.Core.Message;
+using org.bidib.Net.Core.Models.BiDiB;
+using org.bidib.Net.Core.Models.BiDiB.Extensions;
+using org.bidib.Net.Core.Models.Messages.Input;
+using org.bidib.Net.Core.Utils;
 using Timer = System.Timers.Timer;
 
-namespace org.bidib.nbidibc.Simulation.Models.Nodes
+namespace org.bidib.Net.Simulation.Models.Nodes
 {
     public class SimulationNode : Node, IDisposable
     {
@@ -57,13 +56,13 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
             PrepareFeatures();
         }
 
-        public virtual void Start()
+        public void Start()
         {
-            Feature feature = this.GetFeature(BiDiBFeature.FEATURE_BM_SIZE);
+            var feature = this.GetFeature(BiDiBFeature.FEATURE_BM_SIZE);
             if (feature?.Value > 0)
             {
-                List<FeedbackPort> feedbackPorts = new List<FeedbackPort>();
-                for (int i = 0; i < feature.Value; i++)
+                var feedbackPorts = new List<FeedbackPort>();
+                for (var i = 0; i < feature.Value; i++)
                 {
                     feedbackPorts.Add(new FeedbackPort { Number = i, IsFree = true });
                 }
@@ -97,7 +96,7 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
 
         protected void AddOrUpdateFeature(BiDiBFeature featureType, byte value)
         {
-            var feature = Features.FirstOrDefault(x => x.FeatureType == featureType);
+            var feature = Array.Find(Features, x => x.FeatureType == featureType);
             if (feature == null)
             {
                 feature = new Feature { FeatureId = (byte)featureType };
@@ -116,6 +115,11 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
 
         protected virtual void OnHandleMessage(BiDiBInputMessage message, Action<byte[]> addResponse)
         {
+            if (message == null || addResponse == null)
+            {
+                return;
+            }
+            
             switch (message.MessageType)
             {
                 case BiDiBMessage.MSG_SYS_ENABLE:
@@ -143,13 +147,13 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
                     }
                 case BiDiBMessage.MSG_SYS_GET_P_VERSION:
                     {
-                        byte[] protocol = GetBytesFromDotted(ProtocolVersion);
+                        var protocol = GetBytesFromDotted(ProtocolVersion);
                         addResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_SYS_P_VERSION, message.SequenceNumber, protocol));
                         break;
                     }
                 case BiDiBMessage.MSG_SYS_GET_SW_VERSION:
                     {
-                        byte[] software = GetBytesFromDotted(SoftwareVersion);
+                        var software = GetBytesFromDotted(SoftwareVersion);
                         addResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_SYS_SW_VERSION, message.SequenceNumber, software));
                         break;
                     }
@@ -164,7 +168,7 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
                         {
                             nodeTabNodes = new Queue<SimulationNode>();
                             nodeTabNodes.Enqueue(this);
-                            foreach (SimulationNode child in Children)
+                            foreach (var child in Children)
                             {
                                 nodeTabNodes.Enqueue(child);
                             }
@@ -177,9 +181,9 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
                     {
                         if (nodeTabNodes?.Count > 0)
                         {
-                            SimulationNode node = nodeTabNodes.Dequeue();
-                            int nodeIndex = node == this ? 0 : node.Address.Last();
-                            List<byte> parameters = new List<byte> { Convert.ToByte(nodeTabVersion), Convert.ToByte(nodeIndex) };
+                            var node = nodeTabNodes.Dequeue();
+                            var nodeIndex = node == this ? 0 : node.Address[^1];
+                            var parameters = new List<byte> { Convert.ToByte(nodeTabVersion), Convert.ToByte(nodeIndex) };
                             parameters.AddRange(node.UniqueIdBytes);
                             addResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_NODETAB, message.SequenceNumber, parameters.ToArray()));
                         }
@@ -203,7 +207,7 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
                     }
                 case BiDiBMessage.MSG_VENDOR_SET:
                     {
-                        HandleVendorSet(message).ConfigureAwait(false);
+                        HandleVendorSetAsync(message).ConfigureAwait(false);
                         break;
                     }
                 case BiDiBMessage.MSG_ACCESSORY_SET:
@@ -223,22 +227,26 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
                     }
                 case BiDiBMessage.MSG_CS_SET_STATE:
                     {
-                        CommandStationState state = (CommandStationState)message.MessageParameters[0];
-                        CommandStationState newState = state == CommandStationState.BIDIB_CS_STATE_QUERY ? CommandStationState.BIDIB_CS_STATE_OFF : state;
+                        var state = (CommandStationState)message.MessageParameters[0];
+                        var newState = state == CommandStationState.BIDIB_CS_STATE_QUERY ? CommandStationState.BIDIB_CS_STATE_OFF : state;
                         addResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_CS_STATE, message.SequenceNumber, (byte)newState));
                         break;
                     }
                 case BiDiBMessage.MSG_FEATURE_GETALL:
                     {
                         featureIndex = 0;
-                        addResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_FEATURE_COUNT, message.SequenceNumber, Convert.ToByte(Features?.Length, CultureInfo.CurrentCulture)));
+                        addResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address,
+                            BiDiBMessage.MSG_FEATURE_COUNT, message.SequenceNumber,
+                            Convert.ToByte(Features?.Length, CultureInfo.CurrentCulture)));
                         break;
                     }
                 case BiDiBMessage.MSG_FEATURE_GETNEXT:
                     {
                         if (featureIndex < Features.Length)
                         {
-                            addResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_FEATURE, message.SequenceNumber, Features[featureIndex].FeatureId, Features[featureIndex].Value));
+                            addResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address,
+                                BiDiBMessage.MSG_FEATURE, message.SequenceNumber, Features[featureIndex].FeatureId,
+                                Features[featureIndex].Value));
                             featureIndex++;
                         }
 
@@ -246,7 +254,7 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
                     }
                 case BiDiBMessage.MSG_FEATURE_GET:
                     {
-                        Feature feature = Features.FirstOrDefault(x => x.FeatureId == message.MessageParameters[0]);
+                        var feature = Array.Find(Features,x => x.FeatureId == message.MessageParameters[0]);
                         addResponse.Invoke(feature != null
                             ? BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_FEATURE, message.SequenceNumber, feature.FeatureId, feature.Value)
                             : BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_FEATURE_NA, message.SequenceNumber, message.MessageParameters[0]));
@@ -254,10 +262,10 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
                     }
                 case BiDiBMessage.MSG_FEATURE_SET:
                     {
-                        Feature feature = Features.FirstOrDefault(x => x.FeatureId == message.MessageParameters[0]);
+                        var feature = Array.Find(Features,x => x.FeatureId == message.MessageParameters[0]);
                         if (feature != null)
                         {
-                            feature.Value = message.MessageParameters[1];
+                            feature.Value = feature.FeatureType == BiDiBFeature.FEATURE_GEN_WATCHDOG ? (byte)20 : message.MessageParameters[1];
                             addResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_FEATURE, message.SequenceNumber, feature.FeatureId, feature.Value));
                         }
                         else
@@ -268,7 +276,7 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
                     }
                 case BiDiBMessage.MSG_STRING_GET:
                     {
-                        List<byte> parameters = new List<byte> { 0 };
+                        var parameters = new List<byte> { 0 };
                         if (message.MessageParameters[1] == 0)
                         {
                             parameters.Add(0);
@@ -286,14 +294,30 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
                         }
                         break;
                     }
+                case BiDiBMessage.MSG_STRING_SET:
+                {
+                    var stringValue = message.MessageParameters.Skip(3).ToArray().GetStringValue();
+                    if (message.MessageParameters[1] == 0)
+                    {
+                        ProductName = stringValue;
+                    }
+                    if (message.MessageParameters[1] == 1)
+                    {
+                        UserName = stringValue;
+                    }
+
+                    addResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_STRING, message.SequenceNumber, message.MessageParameters));
+                    
+                    break;
+                }
                 case BiDiBMessage.MSG_BM_GET_RANGE:
                     {
-                        Feature feature = Features.FirstOrDefault(x => x.FeatureType == BiDiBFeature.FEATURE_BM_SIZE);
+                        var feature = Array.Find(Features,x => x.FeatureType == BiDiBFeature.FEATURE_BM_SIZE);
                         if (feature?.Value > 0)
                         {
-                            List<bool> feedbackStates = FeedbackPorts.Select(port => !port.IsFree).ToList();
-                            BitArray array = new BitArray(feedbackStates.ToArray());
-                            byte[] parameters = new byte[2 + feature.Value / 8];
+                            var feedbackStates = FeedbackPorts.Select(port => !port.IsFree).ToList();
+                            var array = new BitArray(feedbackStates.ToArray());
+                            var parameters = new byte[2 + feature.Value / 8];
                             parameters[0] = message.MessageParameters[0];
                             parameters[1] = message.MessageParameters[1];
                             array.CopyTo(parameters, 2);
@@ -317,32 +341,42 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
 
         private void HandleFirmwareUpdateOperation(BiDiBInputMessage message)
         {
-            FirmwareUpdateOperation operation = (FirmwareUpdateOperation)message.MessageParameters[0];
+            var operation = (FirmwareUpdateOperation)message.MessageParameters[0];
             switch (operation)
             {
                 case FirmwareUpdateOperation.BIDIB_MSG_FW_UPDATE_OP_ENTER:
-                    {
-                        AddResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_FW_UPDATE_STAT, message.SequenceNumber, (byte)FirmwareUpdateStatus.BIDIB_MSG_FW_UPDATE_STAT_READY, 0));
+                {
+                    AddResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address,
+                        BiDiBMessage.MSG_FW_UPDATE_STAT, message.SequenceNumber,
+                        (byte) FirmwareUpdateStatus.BIDIB_MSG_FW_UPDATE_STAT_READY, 0));
                         break;
                     }
                 case FirmwareUpdateOperation.BIDIB_MSG_FW_UPDATE_OP_SETDEST:
-                    {
-                        AddResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_FW_UPDATE_STAT, message.SequenceNumber, (byte)FirmwareUpdateStatus.BIDIB_MSG_FW_UPDATE_STAT_DATA, message.MessageParameters[1]));
+                {
+                    AddResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address,
+                        BiDiBMessage.MSG_FW_UPDATE_STAT, message.SequenceNumber,
+                        (byte) FirmwareUpdateStatus.BIDIB_MSG_FW_UPDATE_STAT_DATA, message.MessageParameters[1]));
                         break;
                     }
                 case FirmwareUpdateOperation.BIDIB_MSG_FW_UPDATE_OP_DATA:
-                    {
-                        AddResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_FW_UPDATE_STAT, message.SequenceNumber, (byte)FirmwareUpdateStatus.BIDIB_MSG_FW_UPDATE_STAT_DATA, 1));
+                {
+                    AddResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address,
+                        BiDiBMessage.MSG_FW_UPDATE_STAT, message.SequenceNumber,
+                        (byte) FirmwareUpdateStatus.BIDIB_MSG_FW_UPDATE_STAT_DATA, 1));
                         break;
                     }
                 case FirmwareUpdateOperation.BIDIB_MSG_FW_UPDATE_OP_DONE:
-                    {
-                        AddResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_FW_UPDATE_STAT, message.SequenceNumber, (byte)FirmwareUpdateStatus.BIDIB_MSG_FW_UPDATE_STAT_READY, 0));
+                {
+                    AddResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address,
+                        BiDiBMessage.MSG_FW_UPDATE_STAT, message.SequenceNumber,
+                        (byte) FirmwareUpdateStatus.BIDIB_MSG_FW_UPDATE_STAT_READY, 0));
                         break;
                     }
                 case FirmwareUpdateOperation.BIDIB_MSG_FW_UPDATE_OP_EXIT:
-                    {
-                        AddResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_FW_UPDATE_STAT, message.SequenceNumber, (byte)FirmwareUpdateStatus.BIDIB_MSG_FW_UPDATE_STAT_EXIT, 0));
+                {
+                    AddResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address,
+                        BiDiBMessage.MSG_FW_UPDATE_STAT, message.SequenceNumber,
+                        (byte) FirmwareUpdateStatus.BIDIB_MSG_FW_UPDATE_STAT_EXIT, 0));
                         break;
                     }
             }
@@ -350,9 +384,9 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
 
         private void HandleAccessoryGet(BiDiBInputMessage message)
         {
-            byte accessory = message.MessageParameters[0];
-            byte aspect = AccessoryAspects.ContainsKey(accessory) ? AccessoryAspects[accessory] : (byte)255;
-            List<byte> parameters = new List<byte> { accessory, aspect, (byte)StaticRandom.Instance.Next(1, 20), 0, 0 }; // max limit is 127
+            var accessory = message.MessageParameters[0];
+            var aspect = AccessoryAspects.TryGetValue(accessory, out var accessoryAspect) ? accessoryAspect : (byte)255;
+            var parameters = new List<byte> { accessory, aspect, (byte)StaticRandom.Instance.Next(1, 20), 0, 0 }; // max limit is 127
 
             OnAccessoryGet(accessory, parameters);
 
@@ -364,17 +398,17 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
 
         private void HandleAccessoryPara(BiDiBInputMessage message)
         {
-            byte accessory = message.MessageParameters[0];
-            byte paraNum = message.MessageParameters[1];
+            var accessory = message.MessageParameters[0];
+            var paraNum = message.MessageParameters[1];
             AddResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(message.Address, BiDiBMessage.MSG_ACCESSORY_PARA, message.SequenceNumber, accessory, paraNum, 0));
         }
 
         private void HandleAccessorySet(BiDiBInputMessage message)
         {
-            byte accessory = message.MessageParameters[0];
-            byte aspect = message.MessageParameters[1];
+            var accessory = message.MessageParameters[0];
+            var aspect = message.MessageParameters[1];
 
-            List<byte> parameters = new List<byte> { accessory, aspect, Convert.ToByte(AccessoryAspects.Count), 0, 0 };
+            var parameters = new List<byte> { accessory, aspect, Convert.ToByte(AccessoryAspects.Count), 0, 0 };
 
             OnAccessorySet(accessory, aspect, parameters);
 
@@ -389,10 +423,10 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
 
         private async Task HandleVendorGet(BiDiBInputMessage message)
         {
-            byte nameLength = message.MessageParameters[0];
-            byte[] cvNameBytes = new byte[nameLength];
+            var nameLength = message.MessageParameters[0];
+            var cvNameBytes = new byte[nameLength];
             Array.Copy(message.MessageParameters, 1, cvNameBytes, 0, nameLength);
-            string cvName = cvNameBytes.GetStringValue();
+            var cvName = cvNameBytes.GetStringValue();
 
             var parameters = new List<byte> { nameLength };
             parameters.AddRange(cvNameBytes);
@@ -406,24 +440,24 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
 
         protected virtual void OnHandleVendorGet(string cvName)
         {
-            var cvValue = CvValues.ContainsKey(cvName)
-                ? CvValues[cvName]
+            var cvValue = CvValues.TryGetValue(cvName, out var value)
+                ? value
                 : StaticRandom.Instance.Next(1, 255).ToString(CultureInfo.CurrentCulture);
 
             CvValues[cvName] = cvValue;
         }
 
-        private async Task HandleVendorSet(BiDiBInputMessage message)
+        private async Task HandleVendorSetAsync(BiDiBInputMessage message)
         {
-            byte nameLength = message.MessageParameters[0];
-            byte[] cvNameBytes = new byte[nameLength];
+            var nameLength = message.MessageParameters[0];
+            var cvNameBytes = new byte[nameLength];
             Array.Copy(message.MessageParameters, 1, cvNameBytes, 0, nameLength);
-            string cvName = cvNameBytes.GetStringValue();
+            var cvName = cvNameBytes.GetStringValue();
 
-            byte valueLength = message.MessageParameters[nameLength + 1];
-            byte[] cvValueBytes = new byte[valueLength];
+            var valueLength = message.MessageParameters[nameLength + 1];
+            var cvValueBytes = new byte[valueLength];
             Array.Copy(message.MessageParameters, nameLength + 2, cvValueBytes, 0, valueLength);
-            string cvValue = cvValueBytes.GetStringValue();
+            var cvValue = cvValueBytes.GetStringValue();
 
             OnHandleVendorSet(cvName, cvValue);
 
@@ -445,7 +479,7 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
 
         protected void ForwardToChildren(BiDiBInputMessage message, Action<byte[]> addResponse)
         {
-            foreach (SimulationNode node in Children)
+            foreach (var node in Children)
             {
                 node.HandleMessage(message, addResponse);
             }
@@ -453,22 +487,22 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
 
         private static IEnumerable<byte> GetBytes(string value)
         {
-            List<byte> parameters = new List<byte> { Convert.ToByte(value.Length) };
+            var parameters = new List<byte> { Convert.ToByte(value.Length) };
             parameters.AddRange(value.Select(Convert.ToByte));
             return parameters.ToArray();
         }
 
         private static byte[] GetBytesFromDotted(string value)
         {
-            string[] parts = value.Split('.');
-            byte[] bytes = parts.Select(x => Convert.ToByte(x, CultureInfo.CurrentCulture)).ToArray();
+            var parts = value.Split('.');
+            var bytes = parts.Select(x => Convert.ToByte(x, CultureInfo.CurrentCulture)).ToArray();
             Array.Reverse(bytes);
             return bytes;
         }
 
         private static byte[] GetNameBytes(string name)
         {
-            List<byte> bytes = new List<byte>();
+            var bytes = new List<byte>();
             if (!string.IsNullOrEmpty(name))
             {
                 bytes.Add((byte)name.Length);
@@ -518,11 +552,11 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
         {
             if (!(FeedbackPorts?.Length > 0)) { return; }
 
-            int feedbackIndex = StaticRandom.Instance.Next(0, FeedbackPorts.Length - 1);
-            FeedbackPort port = FeedbackPorts[feedbackIndex];
+            var feedbackIndex = StaticRandom.Instance.Next(0, FeedbackPorts.Length - 1);
+            var port = FeedbackPorts[feedbackIndex];
             port.IsFree = !port.IsFree;
 
-            BiDiBMessage message = port.IsFree
+            var message = port.IsFree
                 ? BiDiBMessage.MSG_BM_FREE
                 : BiDiBMessage.MSG_BM_OCC;
 
@@ -534,7 +568,7 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
             }
             else
             {
-                OccupancyInfo occInfo = new OccupancyInfo { Address = (ushort)StaticRandom.Instance.Next(1, 10) };
+                var occInfo = new OccupancyInfo { Address = (ushort)StaticRandom.Instance.Next(1, 10) };
                 port.AddOccupancy(occInfo);
                 SendAddresses(port.Number, port.Occupancies.Select(x => x.Address));
             }
@@ -543,10 +577,10 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
         protected virtual void OnFifthCycleValueChangeTrigger()
         {
             if (!(FeedbackPorts?.Length > 0)) { return; }
-            int feedbackIndex = StaticRandom.Instance.Next(0, FeedbackPorts.Length - 1);
+            var feedbackIndex = StaticRandom.Instance.Next(0, FeedbackPorts.Length - 1);
             if (FeedbackPorts[feedbackIndex].IsFree) { return; }
 
-            List<byte> parameters = new List<byte>
+            var parameters = new List<byte>
             {
                 (byte) FeedbackPorts[feedbackIndex].Number,
                 0x03,
@@ -564,23 +598,23 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
         protected virtual void OnFourthCycleValueChangeTrigger()
         {
             if (!(FeedbackPorts?.Length > 0)) { return; }
-            int feedbackIndex = StaticRandom.Instance.Next(0, FeedbackPorts.Length - 1);
-            FeedbackPort port = FeedbackPorts[feedbackIndex];
+            var feedbackIndex = StaticRandom.Instance.Next(0, FeedbackPorts.Length - 1);
+            var port = FeedbackPorts[feedbackIndex];
 
             if (port.IsFree) { return; }
 
             var address = (ushort)StaticRandom.Instance.Next(1, 10);
 
-            if (port.Occupancies.All(x => x.Address != address))
+            if (Array.TrueForAll(port.Occupancies,x => x.Address != address))
             {
-                OccupancyInfo occInfo = new OccupancyInfo { Address = address };
+                var occInfo = new OccupancyInfo { Address = address };
                 port.AddOccupancy(occInfo);
 
                 SendAddresses(port.Number, port.Occupancies.Select(x => x.Address));
             }
             else if (port.Occupancies.Length > 2)
             {
-                List<OccupancyInfo> occs = port.Occupancies.ToList();
+                var occs = port.Occupancies.ToList();
                 occs.RemoveAt(1);
 
                 SendAddresses(port.Number, occs.Select(x => x.Address));
@@ -602,10 +636,10 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
         protected void SendAddresses(int portNumber, IEnumerable<ushort> addresses)
         {
             if (addresses == null) { return; }
-            List<byte> parameters = new List<byte> { (byte)portNumber };
+            var parameters = new List<byte> { (byte)portNumber };
             foreach (var address in addresses)
             {
-                byte[] adr = BitConverter.GetBytes(address);
+                var adr = BitConverter.GetBytes(address);
                 parameters.AddRange(adr);
             }
 

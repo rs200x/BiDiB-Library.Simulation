@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace org.bidib.nbidibc.Simulation.Models.Nodes
+namespace org.bidib.Net.Simulation.Models.Nodes
 {
     public class StepControl : SimulationNode
     {

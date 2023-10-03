@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Xml.Serialization;
-using org.bidib.netbidibc.core.Models;
+using org.bidib.Net.Core.Models;
 
-namespace org.bidib.nbidibc.Simulation.Models.Definition
+namespace org.bidib.Net.Simulation.Models.Definition
 {
     [Serializable]
     [XmlType(TypeName = "LightPortType", Namespace = Namespaces.SimulationNamespaceUrl)]

@@ -1,17 +1,16 @@
-﻿
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using org.bidib.netbidibc.core;
-using org.bidib.netbidibc.core.Message;
-using org.bidib.netbidibc.core.Models.BiDiB;
-using org.bidib.netbidibc.core.Utils;
+using org.bidib.Net.Core;
+using org.bidib.Net.Core.Message;
+using org.bidib.Net.Core.Models.BiDiB;
+using org.bidib.Net.Core.Utils;
 
-namespace org.bidib.nbidibc.Simulation.Models.Nodes
+namespace org.bidib.Net.Simulation.Models.Nodes
 {
     public class ReadyBoostNode : GbmBoostNode
     {
-        private readonly List<OccupancyInfo> occupancies = new List<OccupancyInfo>();
+        private readonly List<OccupancyInfo> occupancies = new();
 
         protected override void PrepareFeatures()
         {
@@ -53,10 +52,10 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
             if (!IsBoosterOn) { return; }
 
             var decoderAddress = GetNextDecoderAddress();
-            var occupancy = occupancies.FirstOrDefault(x => x.Address == decoderAddress);
+            var occupancy = occupancies.Find(x => x.Address == decoderAddress);
             if (occupancy == null)
             {
-                OccupancyInfo occInfo = new OccupancyInfo { Address = decoderAddress };
+                var occInfo = new OccupancyInfo { Address = decoderAddress };
                 occupancies.Add(occInfo);
             }
             else
@@ -73,7 +72,7 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
             if (!IsBoosterOn) { return; }
 
             var decoderAddress = GetNextDecoderAddress();
-            List<byte> parameters = new List<byte> { 255 };
+            var parameters = new List<byte> { 255 };
             parameters.AddRange(BitConverter.GetBytes(decoderAddress));
             parameters.Add((byte)StaticRandom.Instance.Next(1, 5));
             parameters.Add((byte)StaticRandom.Instance.Next(byte.MinValue, byte.MaxValue));
@@ -87,7 +86,7 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
             if (!IsBoosterOn) { return; }
 
             var decoderAddress = GetNextDecoderAddress();
-            List<byte> parameters = new List<byte>();
+            var parameters = new List<byte>();
             parameters.AddRange(BitConverter.GetBytes(decoderAddress));
             parameters.AddRange(BitConverter.GetBytes(StaticRandom.Instance.Next(0, 300)));
             AddResponse.Invoke(BiDiBMessageGenerator.GenerateMessage(Address, BiDiBMessage.MSG_BM_SPEED, LastSequenceNumber++, parameters.ToArray()));

@@ -1,10 +1,12 @@
 ﻿using System.ComponentModel.Composition;
-using org.bidib.netbidibc.core.Controllers.Interfaces;
-using org.bidib.netbidibc.core.Enumerations;
-using org.bidib.netbidibc.core.Message;
-using org.bidib.netbidibc.core.Services.Interfaces;
+using Microsoft.Extensions.Logging;
+using org.bidib.Net.Core.Controllers.Interfaces;
+using org.bidib.Net.Core.Enumerations;
+using org.bidib.Net.Core.Message;
+using org.bidib.Net.Core.Services.Interfaces;
+using org.bidib.Net.Simulation.Services;
 
-namespace org.bidib.nbidibc.simulation.Controllers
+namespace org.bidib.Net.Simulation.Controllers
 {
     [Export(typeof(IConnectionControllerFactory))]
     [PartCreationPolicy(CreationPolicy.NonShared)]
@@ -12,12 +14,16 @@ namespace org.bidib.nbidibc.simulation.Controllers
     {
         private readonly IXmlService xmlService;
         private readonly IBiDiBMessageExtractor messageExtractor;
+        private readonly ISimulationNodeFactory simulationNodeFactory;
+        private readonly ILoggerFactory loggerFactory;
 
         [ImportingConstructor]
-        public ConnectionControllerFactory(IXmlService xmlService, IBiDiBMessageExtractor messageExtractor)
+        public ConnectionControllerFactory(IXmlService xmlService, IBiDiBMessageExtractor messageExtractor, ISimulationNodeFactory simulationNodeFactory, ILoggerFactory loggerFactory)
         {
             this.xmlService = xmlService;
             this.messageExtractor = messageExtractor;
+            this.simulationNodeFactory = simulationNodeFactory;
+            this.loggerFactory = loggerFactory;
         }
 
         /// <inheritdoc />
@@ -26,7 +32,7 @@ namespace org.bidib.nbidibc.simulation.Controllers
         /// <inheritdoc />
         public IConnectionController GetController(IConnectionConfig connectionConfig)
         {
-            var controller = new SimulationController(xmlService, messageExtractor);
+            var controller = new SimulationController(xmlService, messageExtractor, simulationNodeFactory, loggerFactory);
             controller.Initialize(connectionConfig as ISimulationConfig);
 
             return controller;

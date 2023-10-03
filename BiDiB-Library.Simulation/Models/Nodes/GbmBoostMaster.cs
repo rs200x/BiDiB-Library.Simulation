@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using org.bidib.netbidibc.core;
-using org.bidib.netbidibc.core.Enumerations;
-using org.bidib.netbidibc.core.Message;
-using org.bidib.netbidibc.core.Models.Messages.Input;
-using org.bidib.netbidibc.core.Utils;
+using org.bidib.Net.Core;
+using org.bidib.Net.Core.Enumerations;
+using org.bidib.Net.Core.Message;
+using org.bidib.Net.Core.Models.Messages.Input;
+using org.bidib.Net.Core.Utils;
 
-namespace org.bidib.nbidibc.Simulation.Models.Nodes
+namespace org.bidib.Net.Simulation.Models.Nodes
 {
     public class GbmBoostMaster : GbmBoostNode
     {
@@ -78,6 +78,11 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
         {
             base.OnHandleMessage(message, addResponse);
 
+            if (message == null || addResponse == null)
+            {
+                return;
+            }
+            
             switch (message.MessageType)
             {
                 case BiDiBMessage.MSG_CS_POM:

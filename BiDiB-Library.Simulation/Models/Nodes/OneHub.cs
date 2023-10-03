@@ -1,8 +1,8 @@
 ﻿using System;
-using org.bidib.netbidibc.core;
-using org.bidib.netbidibc.core.Models.Messages.Input;
+using org.bidib.Net.Core;
+using org.bidib.Net.Core.Models.Messages.Input;
 
-namespace org.bidib.nbidibc.Simulation.Models.Nodes
+namespace org.bidib.Net.Simulation.Models.Nodes
 {
     public class OneHub : SimulationNode
     {
@@ -10,6 +10,11 @@ namespace org.bidib.nbidibc.Simulation.Models.Nodes
         {
             base.OnHandleMessage(message, addResponse);
 
+            if (message == null || addResponse == null)
+            {
+                return;
+            }
+            
             switch (message.MessageType)
             {
                 case BiDiBMessage.MSG_SYS_ENABLE:

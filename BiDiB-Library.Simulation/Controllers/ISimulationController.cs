@@ -1,7 +1,7 @@
 ﻿using System;
-using org.bidib.netbidibc.core.Controllers.Interfaces;
+using org.bidib.Net.Core.Controllers.Interfaces;
 
-namespace org.bidib.nbidibc.simulation.Controllers
+namespace org.bidib.Net.Simulation.Controllers
 {
     public interface ISimulationController : IConnectionController, IDisposable
     {

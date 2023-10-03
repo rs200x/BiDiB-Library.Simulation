@@ -1,26 +1,44 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>org.bidib.nbidibc.simulation</AssemblyName>
-    <RootNamespace>org.bidib.nbidibc.simulation</RootNamespace>
+    <AssemblyName>org.bidib.Net.Simulation</AssemblyName>
+    <RootNamespace>org.bidib.Net.Simulation</RootNamespace>
     <TargetFramework>net6.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <BclBuildImported>Ignore</BclBuildImported>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <OutputPath>..\..\Output\$(Configuration)</OutputPath>
-    <CodeAnalysisRuleSet>..\..\BiDiBMonitor\.sonarlint\bidib-monitorcsharp.ruleset</CodeAnalysisRuleSet>
+    <Title>BiDiB-Library.Simulation</Title>
+    <Authors>Robert Kölz</Authors>
+    <Description>BiDiB-Library extension for node simulation</Description>
+    <Copyright>bidib.org</Copyright>
+    <Company>bidib.org</Company>
+    <PackageIcon>bidib_logo.png</PackageIcon>
+    <Product>BiDiB-Library - Simulation Extension</Product>
+    <PackageId>org.bidib.net.simulation</PackageId>
   </PropertyGroup>
 
   <ItemGroup>
     <Folder Include="Models\" />
     <Folder Include="Controllers\" />
     <Folder Include="Services\" />
+    <None Include="bidib_logo.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="log4net" Version="2.0.15" />
-    <PackageReference Include="org.bidib.netbidibc.core" Version="1.0.2-dev.6" />
     <PackageReference Include="System.ComponentModel.Composition" Version="7.0.0" />
   </ItemGroup>
+
+  <Choose>
+    <When Condition="'$(Configuration)'=='Debug' ">
+      <ItemGroup>
+        <ProjectReference Include="..\..\Core\BiDiB-Library.Core\BiDiB-Library.Core.csproj" />
+      </ItemGroup>
+    </When>
+    <When Condition="'$(Configuration)'=='Release' ">
+      <ItemGroup>
+        <PackageReference Include="org.bidib.Net.Core" Version="1.0.2" />
+      </ItemGroup>
+    </When>
+  </Choose>
 
 </Project>
